@@ -23,8 +23,11 @@ import (
 	"github.com/Masterminds/sprig"
 	"github.com/tazjin/kontemplate/context"
 	"github.com/tazjin/kontemplate/util"
-	yaml "gopkg.in/yaml.v2"
 )
+
+// this global variable that will contain the final template. This is used by
+// the template function "execTemplate"
+var finalTpl *template.Template
 
 const failOnMissingKeys string = "missingkey=error"
 
@@ -124,7 +127,7 @@ func templateFile(ctx *context.Context, rs *context.ResourceSet, filepath string
 	if err != nil {
 		return resource, fmt.Errorf("Could not load template %s: %v", filepath, err)
 	}
-
+	finalTpl = tpl
 	var b bytes.Buffer
 	err = tpl.Execute(&b, rs.Values)
 	if err != nil {
@@ -187,14 +190,12 @@ func templateFuncs(c *context.Context, rs *context.ResourceSet) template.FuncMap
 		return string(b)
 	}
 
-	m["toYaml"] = func(v interface{}) string {
-		data, err := yaml.Marshal(v)
-		if err != nil {
-			// Swallow errors inside of a template.
-			return ""
-		}
-		return string(data)
+	m["execTemplate"] = func(name string, data interface{}) (string, error) {
+		buf := &bytes.Buffer{}
+		err := finalTpl.ExecuteTemplate(buf, name, data)
+		return buf.String(), err
 	}
+
 	m["passLookup"] = GetFromPass
 	m["gitHEAD"] = func() (string, error) {
 		out, err := exec.Command("git", "-C", c.BaseDir, "rev-parse", "HEAD").Output()
