@@ -215,13 +215,14 @@ func templateFuncs(c *context.Context, rs *context.ResourceSet) template.FuncMap
 		return buf.String(), err
 	}
 
-	m["toYaml"] = func(v interface{}) string {
+	m["toYaml"] = func(v interface{}) (string, error) {
 		data, err := yaml.Marshal(v)
-		if err != nil {
-			// Swallow errors inside of a template.
-			return ""
-		}
-		return string(data)
+		return string(data), err
+	}
+
+	m["getFileContent"] = func(name string) (string, error) {
+		data, err := ioutil.ReadFile(name)
+		return string(data), err
 	}
 
 	m["passLookup"] = GetFromPass
